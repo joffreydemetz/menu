@@ -1,10 +1,10 @@
 {
-    "name": "jdz/media",
+    "name": "jdz/menu",
     "type": "library",
     "description": "Media tree manager",
     "keywords": ["media"],
     "homepage": "https://github.com/joffreydemetz/menu/",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "license": "MIT",
 
     "authors": [
