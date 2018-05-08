@@ -1,0 +1,29 @@
+{
+    "name": "jdz/media",
+    "type": "library",
+    "description": "Media tree manager",
+    "keywords": ["media"],
+    "homepage": "https://github.com/joffreydemetz/menu/",
+    "version": "1.0.0",
+    "license": "MIT",
+
+    "authors": [
+        {
+            "name": "Joffrey Demetz",
+            "email": "joffrey.demetz@gmail.com",
+            "homepage": "https://joffreydemetz.com",
+            "role": "Lead"
+        }
+    ],
+
+    "require": {
+        "php": ">=7.0",
+        "jdz/helpers": "^1.2"
+    },
+    
+    "autoload": {
+        "psr-4": {
+            "JDZ\\Menu\\": "src"
+        }
+    }
+}
