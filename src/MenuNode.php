@@ -187,9 +187,9 @@ class MenuNode
   
   public function setTitle($title)
   {
-    if ( '' !== $title ){
-      $title = i18n($title);
-    }
+    // if ( '' !== $title ){
+      // $title = i18n($title);
+    // }
     $this->title = $title;
     return $this;
   }
