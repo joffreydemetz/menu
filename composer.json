@@ -4,7 +4,7 @@
     "description": "Menu generator",
     "keywords": ["menu"],
     "homepage": "https://github.com/joffreydemetz/menu/",
-    "version": "1.0.3",
+    "version": "2.0.0",
     "license": "MIT",
 
     "authors": [
@@ -17,7 +17,8 @@
     ],
 
     "require": {
-        "jdz/helpers": "^1.2"
+        "php": "^7.1.3",
+        "jdz/helpers": "^2.0"
     },
     
     "autoload": {
