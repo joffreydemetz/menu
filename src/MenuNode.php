@@ -181,7 +181,7 @@ class MenuNode
   public function setSeparator()
   {
     $this->separator = true;
-    $this->class     = 'separator';
+    // $this->class     = 'divider';
     return $this;
   }
   
@@ -206,18 +206,30 @@ class MenuNode
     return $this;
   }
 
-  public function setClass($class)
+  public function setClass($class, $merge=false)
   {
-    $this->class = $class;
+    if ( !$merge ){
+      $classes = [];
+    }
+    else {
+      $classes = $this->class ? explode(' ', $this->class) : [];
+    }
+    
+    $_classes = $class ? explode(' ', $class) : [];
+    
+    $classes = array_merge($classes, $_classes);
+    $classes = array_unique($classes);
+    
+    $this->class = implode(' ', $classes);
     return $this;
   }
-
+  
   public function setTarget($target)
   {
     $this->target = $target;
     return $this;
   }
-
+  
   public function setSlug($slug)
   {
     $this->slug = $slug;
@@ -235,7 +247,7 @@ class MenuNode
     $this->icon = $icon;
     return $this;
   }
-
+  
   public function setModal($modal)
   {
     $this->modal = $modal;

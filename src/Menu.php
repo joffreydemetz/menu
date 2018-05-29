@@ -87,6 +87,13 @@ abstract class Menu
   protected $nodeParserCallbacks = [];
   
   /** 
+   * Callback to append children to menu node
+   * 
+   * @var   [\callable]
+   */
+  protected $nodeAppendChildrenCallbacks = [];
+  
+  /** 
    * Callback to modify the node title
    * 
    * @var   \callable
@@ -180,6 +187,18 @@ abstract class Menu
   public function setNodeParserCallback($component, $callback)
   {
     $this->nodeParserCallbacks[$component] = $callback;
+    return $this;
+  }
+  
+  /**
+   * Set node append children callback
+   * 
+   * @param  \callable  $callback   Callback to append children to node
+   * @return $this
+   */
+  public function setNodeAppendChildrenCallback($callback)
+  {
+    $this->nodeAppendChildrenCallbacks[] = $callback;
     return $this;
   }
   
@@ -291,8 +310,7 @@ abstract class Menu
         $node = MenuNode::create()
           ->setClass($item->class)
           ->setSeparator()
-          ->setTitle($item->title)
-          ->setParent($this->_current);
+          ->setTitle($item->title);
         
         $this->_current->addChild($node);
         continue;
@@ -309,8 +327,7 @@ abstract class Menu
         ->setComponent($item->component)
         ->setModal($item->modal)
         ->setHome($item->home)
-        ->setParams($item->params)
-        ->setParent($this->_current);
+        ->setParams($item->params);
       
       $this->_current->addChild($node);
       
@@ -319,6 +336,8 @@ abstract class Menu
         $this->appendItems($item->children);
         $this->_current = $this->_current->getParent();
       }
+      
+      $this->nodeChildrenAppend($node);
     }
   }
   
@@ -415,6 +434,7 @@ abstract class Menu
     $item['icon']      = $node->getIcon();
     $item['target']    = $node->getTarget();
     $item['id']        = $node->getId();
+    $item['class']     = $node->getClass();
     $item['title']     = $this->nodeTitle($node);
     
     if ( $node->hasChildren() ){
@@ -452,6 +472,22 @@ abstract class Menu
     }
 
     return $item;
+  }
+  
+  /**
+   * Parse node for specified component
+   * 
+   * @param  string    $component  The node component
+   * @param  stdClass  $item       The node data
+   * @return string
+   */
+  protected function nodeChildrenAppend(MenuNode $node)
+  {
+    foreach($this->nodeAppendChildrenCallbacks as $callback){
+      if ( is_callable($callback) ){
+        call_user_func($callback, $node);
+      }
+    }
   }
   
   /**
