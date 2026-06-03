@@ -166,7 +166,7 @@ $menu->setConfig($config);
 
 ## Not included
 
-This package builds and renders the **tree only**. It deliberately ships no database access, entities, or repositories — provide your items however you like by implementing `prepareItems()`. (In the saturn / `jdz/jizy-framework` ecosystem, menu persistence lives in the framework, not here.)
+This package builds and renders the **tree only**. It deliberately ships no database access, entities, or repositories — provide your items however you like by implementing `prepareItems()`.
 
 ## Testing
 
