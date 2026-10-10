@@ -133,12 +133,10 @@ class MenuNodeTest extends TestCase
             match ($n->getId()) {
                 2 => $n->setIgnore(true),
                 3 => $n->setIgnore(true)->setIgnore(false),
-                4 => $n->set('ignore', true),
+                4 => $n->set('ignore', 1),
                 default => null,
             };
         });
-        // set so the test holds whatever the ignore/ignoreClasses coupling in render()
-        $menu->ignoreClasses = ['unused'];
 
         $this->assertSame(
             [['title' => 'Home'], ['title' => 'Restored']],
@@ -228,6 +226,10 @@ class MenuNodeTest extends TestCase
             'params merge into the item params' => ['params', ['b' => 3, 'c' => 4], 'params', ['a' => 1, 'b' => 3, 'c' => 4]],
             'separator' => ['separator', true, 'separator', true],
             'active' => ['active', true, 'active', true],
+            'separator from a database row is cast to bool' => ['separator', 1, 'separator', true],
+            'active from a database row is cast to bool' => ['active', '0', 'active', false],
+            'link is cast to string' => ['link', 5, 'route', '5'],
+            'class is cast to string' => ['class', 5, 'class', '5'],
         ];
     }
 

@@ -196,12 +196,12 @@ class MenuNode
         }
 
         if ('link' === $name) {
-            $this->setLink($value);
+            $this->setLink((string) $value);
             return;
         }
 
         if ('class' === $name) {
-            $this->addClass($value);
+            $this->addClass((string) $value);
             return;
         }
 
@@ -218,7 +218,7 @@ class MenuNode
             case 'ignore':
             case 'separator':
             case 'active':
-                $value = ($value);
+                $value = (bool) $value;
                 break;
 
             case 'id':

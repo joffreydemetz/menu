@@ -207,10 +207,8 @@ abstract class AbstractMenu implements MenuTreeInterface
             }
         }
 
-        if ($this->ignoreClasses) {
-            if (true === $node->ignoreIt()) {
-                return false;
-            }
+        if (true === $node->ignoreIt()) {
+            return false;
         }
 
         list($containerAttrs, $linkAttrs) = $this->nodeParseAttributes($node);
