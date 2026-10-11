@@ -71,12 +71,42 @@ class MenuConfigTest extends TestCase
         return [
             'language code' => ['fr', 'fr'],
             'empty string' => ['', null],
+            // 1.1.0: false read as '' (a string, not "no language")
+            'false' => [false, null],
+            'an int is a string' => [0, '0'],
         ];
     }
 
     #[DataProvider('languageProvider')]
-    public function testEmptyLanguageReadsAsNull(string $value, ?string $expected): void
+    public function testEmptyLanguageReadsAsNull(mixed $value, ?string $expected): void
     {
         $this->assertSame($expected, (new MenuConfig())->set('language', $value)->getLanguage());
+    }
+
+    public static function pathValues(): array
+    {
+        return [
+            'string' => ['/var/www', '/var/www'],
+            'int' => [123, '123'],
+            'float' => [1.5, '1.5'],
+            'true' => [true, '1'],
+            'array' => [['a'], ''],
+        ];
+    }
+
+    /** 1.1.0: the path getters cast (an int was a TypeError on the string return type) */
+    #[DataProvider('pathValues')]
+    public function testPathGettersCastToString(mixed $value, string $expected): void
+    {
+        $config = (new MenuConfig())
+            ->set('publicPath', $value)
+            ->set('rootPath', $value)
+            ->set('requestUri', $value)
+            ->set('baseUrl', $value);
+
+        $this->assertSame(
+            [$expected, $expected, $expected, $expected],
+            [$config->getPublicPath(), $config->getRootPath(), $config->getRequestUri(), $config->getBaseUrl()]
+        );
     }
 }

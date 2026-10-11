@@ -14,7 +14,7 @@ class MenuConfig extends Data implements MenuConfigInterface
 {
     public function getPublicPath(): string
     {
-        return $this->get('publicPath', '');
+        return $this->string('publicPath');
     }
 
     public function getCacheThumbs(): int
@@ -24,22 +24,32 @@ class MenuConfig extends Data implements MenuConfigInterface
 
     public function getLanguage(): ?string
     {
-        $lang = $this->get('language');
-        return ($lang !== null && $lang !== '') ? (string)$lang : null;
+        $lang = $this->string('language');
+        return '' !== $lang ? $lang : null;
     }
 
     public function getRootPath(): string
     {
-        return $this->get('rootPath', '');
+        return $this->string('rootPath');
     }
 
     public function getRequestUri(): string
     {
-        return $this->get('requestUri', '');
+        return $this->string('requestUri');
     }
 
     public function getBaseUrl(): string
     {
-        return $this->get('baseUrl', '');
+        return $this->string('baseUrl');
+    }
+
+    /**
+     * A setting as a string: a scalar is cast (an int was a TypeError on the
+     * getters' return type, false read as ''), anything else is ''.
+     */
+    private function string(string $key): string
+    {
+        $value = $this->get($key);
+        return is_scalar($value) ? (string) $value : '';
     }
 }
