@@ -107,13 +107,17 @@ $tree = $menu->setMenu()->toTemplate();
     'id'        => 2,
     'class'     => '',
     'title'     => 'Blog',
-    // 'containerAttrs' => [...]  // present if formatContainerAttributes() returns any
-    // 'linkAttrs'      => [...]  // present if formatLinkAttributes() returns any
+    // 'containerAttrs' => [...]  // present if formatContainerAttributes() returns any, or the node is a dropdown
+    // 'linkAttrs'      => [...]  // present if formatLinkAttributes() returns any, or the node is a dropdown
     'children'  => [ /* same shape, only if the node has rendered children */ ],
 ]
 ```
 
+Nested nodes carry their `route` too. A node some of whose children rendered is a **dropdown** when `$dropdown` is true (the default): `$dropdownClass` (`dropdown` by default) is added to its `containerAttrs['class']` and `<dropdownClass>-toggle` to its `linkAttrs['class']`, once, next to whatever the attribute formatters returned.
+
 Add your own keys per node by overriding `extraNodeData(MenuNode $node): array`.
+
+`toTemplate()` builds the menu itself when `setMenu()` was not called.
 
 ## MenuNode
 
@@ -147,7 +151,12 @@ $menu
     ->setNodeAppendChildrenCallback(fn (MenuNode $n) => null);
 ```
 
-Public tuning properties: `$activeRoute`, `$showChildren`, `$dropdown`, `$dropdownClass`, `$ignoreClasses` (nodes carrying any listed class are skipped during render).
+Public tuning properties:
+
+- `$activeRoute` — the current path; defaults to the config's `requestUri` when one is set
+- `$showChildren` — `false` renders the top level only
+- `$dropdown` / `$dropdownClass` — the dropdown marks on nodes with rendered children (see *Rendered output*)
+- `$ignoreClasses` — nodes carrying any listed class are skipped during render
 
 ## Configuration
 
@@ -163,6 +172,12 @@ $config = (new MenuConfig())
 $menu->setConfig($config);
 // inside your subclass: $this->config->getPublicPath(), getLanguage(), getCacheThumbs(), getBaseUrl()...
 ```
+
+Two keys drive the rendering: `requestUri` is the active route when `$activeRoute` was left empty, and `baseUrl` is put in front of the internal routes that start with `/` (`/blog/` → `https://www.example.com/blog/`). The getters cast: an int path reads as a string, `language: false` as `null`.
+
+## Changelog
+
+- **1.1.0** (2026-10-11) — `$showChildren`, `$dropdown` + `$dropdownClass` and `MenuConfig` (`requestUri`, `baseUrl`) drive `render()` (they were never read); nested nodes render their `route` (it was `null`); the route callback sees every node; `toTemplate()` builds the menu when `setMenu()` was not called (uninitialised-property Error); `MenuNode::getRoute()` defines the route itself; `MenuConfig` path getters cast (an int was a TypeError), `language: false` reads as `null`.
 
 ## Not included
 
