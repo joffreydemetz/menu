@@ -102,6 +102,14 @@ class MenuNodeTest extends TestCase
         $this->assertNull((new MenuNode())->setLink('#')->defRoute()->getRoute());
     }
 
+    /** 1.1.0: getRoute() defines the route itself when defRoute() was not called (its lazy branch was unreachable) */
+    public function testGetRouteWithoutDefRouteReadsTheLink(): void
+    {
+        $this->assertSame('/blog/', (new MenuNode())->setLink('/blog/')->getRoute());
+        $this->assertNull((new MenuNode())->setLink('#')->getRoute());
+        $this->assertNull((new MenuNode())->getRoute());
+    }
+
     // -- effect on the rendered menu ----------------------------------------
 
     public function testSeparatorFlagRendersTheNodeAsAnInactiveSeparator(): void

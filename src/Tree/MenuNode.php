@@ -377,12 +377,9 @@ class MenuNode
 
     public function getRoute(): ?string
     {
-        if (!isset($this->route) && null !== $this->route) {
-            if ($this->link && '#' !== $this->link) {
-                $this->route = $this->link;
-            } else {
-                $this->route = null;
-            }
+        // defined from the link when defRoute() was not called (this branch was unreachable)
+        if (null === $this->route) {
+            $this->defRoute();
         }
         return $this->route;
     }
