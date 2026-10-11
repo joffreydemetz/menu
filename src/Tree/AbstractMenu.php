@@ -89,6 +89,12 @@ abstract class AbstractMenu implements MenuTreeInterface
         $this->appendItems($items);
 
         $this->_current = $this->_root;
+
+        // the config's request URI is the active route when none was set
+        if ('' === $this->activeRoute && null !== $this->config) {
+            $this->activeRoute = $this->config->getRequestUri();
+        }
+
         $this->setActiveItems();
 
         return $this;
@@ -96,14 +102,14 @@ abstract class AbstractMenu implements MenuTreeInterface
 
     public function toTemplate(): array
     {
-        $rootNode = $this->_root;
+        // built on demand (it used to be an uninitialised-property Error before setMenu())
+        if (!isset($this->_root)) {
+            $this->setMenu();
+        }
 
         $items = [];
 
-        foreach ($rootNode->getChildren() as $node) {
-            $node->defRoute();
-            $this->nodeRoute($node);
-
+        foreach ($this->_root->getChildren() as $node) {
             if ($item = $this->render($node)) {
                 $items[] = $item;
             }
@@ -211,6 +217,10 @@ abstract class AbstractMenu implements MenuTreeInterface
             return false;
         }
 
+        // every node defines its route (only the top level did: nested routes were null)
+        $node->defRoute();
+        $this->nodeRoute($node);
+
         list($containerAttrs, $linkAttrs) = $this->nodeParseAttributes($node);
 
         $node->toAnchorAttributes($linkAttrs);
@@ -225,7 +235,7 @@ abstract class AbstractMenu implements MenuTreeInterface
             $item['linkAttrs'] = $linkAttrs;
         }
 
-        $item['route']     = $node->getRoute();
+        $item['route']     = $this->nodeRenderedRoute($node);
         $item['separator'] = $node->isSeparator();
         $item['active']    = $node->isActive();
         $item['modal']     = $node->isModal();
@@ -238,21 +248,73 @@ abstract class AbstractMenu implements MenuTreeInterface
 
         $item = array_merge($item, $this->extraNodeData($node));
 
-        if ($node->hasChildren()) {
-            $item['children'] = [];
+        // the children (showChildren keeps the top level only), then the dropdown
+        // marks on a node some of whose children rendered: dropdownClass on the
+        // container, dropdownClass-toggle on the link, ahead of the other keys
+        if (true === $this->showChildren && $node->hasChildren()) {
+            $children = [];
 
             foreach ($node->getChildren() as $child) {
                 if ($_item = $this->render($child)) {
-                    $item['children'][] = $_item;
+                    $children[] = $_item;
                 }
             }
 
-            if (!$item['children']) {
-                unset($item['children']);
+            if ($children) {
+                if (true === $this->dropdown && '' !== $this->dropdownClass) {
+                    $attrs = [
+                        'containerAttrs' => $this->withClass($containerAttrs, $this->dropdownClass),
+                        'linkAttrs' => $this->withClass($linkAttrs, $this->dropdownClass . '-toggle'),
+                    ];
+                    $item = $attrs + $item;
+                }
+
+                $item['children'] = $children;
             }
         }
 
         return $item;
+    }
+
+    /**
+     * The route as rendered: the node's, behind the config's base URL when it
+     * is an internal path.
+     */
+    protected function nodeRenderedRoute(MenuNode $node): ?string
+    {
+        $route = $node->getRoute();
+
+        if (null === $route || null === $this->config || !$node->isInternal() || !str_starts_with($route, '/')) {
+            return $route;
+        }
+
+        $baseUrl = $this->config->getBaseUrl();
+
+        if ('' === $baseUrl || str_starts_with($route, $baseUrl)) {
+            return $route;
+        }
+
+        return rtrim($baseUrl, '/') . $route;
+    }
+
+    /**
+     * The attributes with a class added once (the formatters may have put it
+     * there already, as a string or a list).
+     */
+    private function withClass(array $attrs, string $class): array
+    {
+        $current = $attrs['class'] ?? '';
+        $list = is_array($current)
+            ? array_values(array_map('strval', $current))
+            : preg_split('/\s+/', trim((string) $current), -1, PREG_SPLIT_NO_EMPTY);
+
+        if (!in_array($class, $list, true)) {
+            $list[] = $class;
+        }
+
+        $attrs['class'] = implode(' ', $list);
+
+        return $attrs;
     }
 
     protected function nodeParser(\stdClass $item): \stdClass

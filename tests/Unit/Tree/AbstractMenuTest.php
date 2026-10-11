@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace JDZ\Menu\Tests\Unit\Tree;
 
+use JDZ\Menu\Config\MenuConfig;
 use JDZ\Menu\Tests\Support\TestMenu;
 use JDZ\Menu\Tree\AbstractMenu;
 use JDZ\Menu\Tree\MenuNode;
@@ -94,9 +95,10 @@ class AbstractMenuTest extends TestCase
         ]);
 
         $child = $menu->setMenu()->toTemplate()[0]['children'][0];
-        unset($child['route']); // nested routes are not asserted (known getRoute() issue)
 
+        // 1.1.0: a nested node renders its route (it was always null: only the top level defined it)
         $this->assertSame([
+            'route' => '/blog/news/',
             'separator' => false,
             'active' => false,
             'modal' => false,
@@ -381,7 +383,8 @@ class AbstractMenuTest extends TestCase
         $blog = $menu->setMenu()->toTemplate()[0];
 
         $this->assertSame(
-            ['route', 'separator', 'active', 'modal', 'slug', 'icon', 'target', 'id', 'class', 'title', 'badge', 'children'],
+            // 1.1.0: a node with rendered children is a dropdown, its attributes come first
+            ['containerAttrs', 'linkAttrs', 'route', 'separator', 'active', 'modal', 'slug', 'icon', 'target', 'id', 'class', 'title', 'badge', 'children'],
             array_keys($blog)
         );
         $this->assertSame('blog', $blog['badge']);
@@ -407,11 +410,14 @@ class AbstractMenuTest extends TestCase
         $this->assertSame(['Blog', 'News', '--'], $asked);
     }
 
-    public function testRouteCallbackGetsEachTopLevelNodeWithItsRouteAlreadyDefined(): void
+    /** 1.1.0: the route callback sees every rendered node (it used to see the top level only) */
+    public function testRouteCallbackGetsEachNodeWithItsRouteAlreadyDefined(): void
     {
         $asked = [];
         $menu = (new TestMenu([
-            TestMenu::item(['title' => 'Blog', 'link' => '/blog/']),
+            TestMenu::item(['title' => 'Blog', 'link' => '/blog/', 'children' => [
+                TestMenu::item(['title' => 'News', 'link' => '/blog/news/']),
+            ]]),
             TestMenu::item(['title' => 'Anchor', 'link' => '#']),
             TestMenu::item(['title' => 'Home', 'link' => '']),
         ]))->setNodeRouteCallback(function (MenuNode $n) use (&$asked): MenuNode {
@@ -421,7 +427,129 @@ class AbstractMenuTest extends TestCase
 
         $menu->setMenu()->toTemplate();
 
-        $this->assertSame([['Blog', '/blog/'], ['Anchor', null], ['Home', null]], $asked);
+        $this->assertSame([['Blog', '/blog/'], ['News', '/blog/news/'], ['Anchor', null], ['Home', null]], $asked);
+    }
+
+    // -- 1.1.0: showChildren, dropdown, MenuConfig, lazy toTemplate() ----------
+
+    private static function blogWithNews(): TestMenu
+    {
+        return new TestMenu([
+            TestMenu::item(['id' => 1, 'title' => 'Blog', 'link' => '/blog/', 'children' => [
+                TestMenu::item(['id' => 2, 'title' => 'News', 'link' => '/blog/news/']),
+            ]]),
+        ]);
+    }
+
+    public function testShowChildrenFalseRendersTheTopLevelOnly(): void
+    {
+        $menu = self::blogWithNews();
+        $menu->showChildren = false;
+
+        $tree = $menu->setMenu()->toTemplate();
+
+        $this->assertSame(['Blog'], self::paths($tree));
+        $this->assertArrayNotHasKey('children', $tree[0]);
+    }
+
+    public static function dropdowns(): array
+    {
+        return [
+            'default dropdown class' => ['dropdown', ['class' => 'dropdown'], ['class' => 'dropdown-toggle']],
+            'custom dropdown class' => ['mm', ['class' => 'mm'], ['class' => 'mm-toggle']],
+        ];
+    }
+
+    #[DataProvider('dropdowns')]
+    public function testANodeWithRenderedChildrenIsADropdown(string $class, array $containerAttrs, array $linkAttrs): void
+    {
+        $menu = self::blogWithNews();
+        $menu->dropdownClass = $class;
+
+        $blog = $menu->setMenu()->toTemplate()[0];
+
+        $this->assertSame($containerAttrs, $blog['containerAttrs']);
+        $this->assertSame($linkAttrs, $blog['linkAttrs']);
+        $this->assertSame(['containerAttrs', 'linkAttrs', 'route'], array_slice(array_keys($blog), 0, 3));
+        $this->assertArrayNotHasKey('containerAttrs', $blog['children'][0]);
+        $this->assertArrayNotHasKey('linkAttrs', $blog['children'][0]);
+    }
+
+    public function testDropdownOffLeavesTheAttributesAlone(): void
+    {
+        $menu = self::blogWithNews();
+        $menu->dropdown = false;
+
+        $blog = $menu->setMenu()->toTemplate()[0];
+
+        $this->assertArrayNotHasKey('containerAttrs', $blog);
+        $this->assertArrayNotHasKey('linkAttrs', $blog);
+        $this->assertCount(1, $blog['children']);
+    }
+
+    public function testTheDropdownClassesJoinTheFormattersClassesOnce(): void
+    {
+        $menu = self::blogWithNews()
+            ->withContainerAttributes(fn (MenuNode $n): array => ['class' => 'nav-item dropdown', 'data-id' => (string) $n->getId()])
+            ->withLinkAttributes(fn (MenuNode $n): array => ['class' => 'nav-link']);
+
+        $blog = $menu->setMenu()->toTemplate()[0];
+
+        $this->assertSame(['class' => 'nav-item dropdown', 'data-id' => '1'], $blog['containerAttrs']);
+        $this->assertSame(['class' => 'nav-link dropdown-toggle'], $blog['linkAttrs']);
+    }
+
+    public function testANodeWhoseChildrenAreAllIgnoredIsNotADropdown(): void
+    {
+        $menu = new TestMenu([
+            TestMenu::item(['title' => 'Account', 'children' => [TestMenu::item(['title' => 'Login', 'class' => 'guest'])]]),
+        ]);
+        $menu->ignoreClasses = ['guest'];
+
+        $account = $menu->setMenu()->toTemplate()[0];
+
+        $this->assertArrayNotHasKey('containerAttrs', $account);
+        $this->assertArrayNotHasKey('children', $account);
+    }
+
+    public function testTheConfigRequestUriIsTheDefaultActiveRoute(): void
+    {
+        $menu = self::blogWithNews()->setConfig((new MenuConfig())->set('requestUri', '/blog/news/'));
+
+        $tree = $menu->setMenu()->toTemplate();
+
+        $this->assertTrue($tree[0]['active']);
+        $this->assertTrue($tree[0]['children'][0]['active']);
+    }
+
+    public function testAnExplicitActiveRouteWinsOverTheConfig(): void
+    {
+        $menu = self::blogWithNews()->setConfig((new MenuConfig())->set('requestUri', '/blog/'));
+        $menu->activeRoute = '/elsewhere/';
+
+        $this->assertFalse($menu->setMenu()->toTemplate()[0]['active']);
+    }
+
+    public function testTheConfigBaseUrlPrefixesTheInternalRoutes(): void
+    {
+        $menu = (new TestMenu([
+            TestMenu::item(['title' => 'Blog', 'link' => '/blog/', 'children' => [TestMenu::item(['title' => 'News', 'link' => '/blog/news/'])]]),
+            TestMenu::item(['title' => 'Elsewhere', 'link' => 'https://other.example/']),
+            TestMenu::item(['title' => 'Anchor', 'link' => '#']),
+        ]))->setConfig((new MenuConfig())->set('baseUrl', 'https://www.example.com/'));
+
+        $tree = $menu->setMenu()->toTemplate();
+
+        $this->assertSame('https://www.example.com/blog/', $tree[0]['route']);
+        $this->assertSame('https://www.example.com/blog/news/', $tree[0]['children'][0]['route']);
+        $this->assertSame('https://other.example/', $tree[1]['route']);
+        $this->assertNull($tree[2]['route']);
+    }
+
+    /** toTemplate() before setMenu() was an uninitialised-property Error */
+    public function testToTemplateBuildsTheMenuWhenSetMenuWasNotCalled(): void
+    {
+        $this->assertSame(['Blog', 'Blog/News'], self::paths(self::blogWithNews()->toTemplate()));
     }
 
     public function testRouteCallbackCanRewriteTheRenderedRoute(): void
